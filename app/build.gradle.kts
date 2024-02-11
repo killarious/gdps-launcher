@@ -11,7 +11,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.geode.launcher"
+        applicationId = "org.killarious.gdpslauncher"
         minSdk = 23
         targetSdk = 34
         versionCode = 11
@@ -77,7 +77,7 @@ android {
             path = file("src/main/cpp/CMakeLists.txt")
         }
     }
-    namespace = "com.geode.launcher"
+    namespace = "org.killarious.gdpslauncher"
     ndkVersion = "26.1.10909125"
 }
 

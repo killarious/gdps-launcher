@@ -3,11 +3,11 @@
     <string name="no_activity_found">No activity found for this action.</string>
 
     <!-- MainActivity strings -->
-    <string name="game_not_found">Geometry Dash was not found.</string>
+    <string name="game_not_found">KillaGDPS was not found.</string>
     <string name="launcher_launch">Launch</string>
     <string name="launcher_settings">Settings</string>
     <string name="launcher_download">Download</string>
-    <string name="launcher_title">Geode</string>
+    <string name="launcher_title">Launcher</string>
     <string name="launcher_logo_alt">geode logo</string>
     <string name="launcher_launch_icon_alt">play icon</string>
     <string name="launcher_download_icon_alt">download icon</string>
@@ -23,10 +23,10 @@
     <string name="launcher_error_icon_alt">error</string>
     <string name="launcher_unsupported_version_title">Unsupported version</string>
     <string name="launcher_outdated_version_description">
-        The current version of Geometry Dash is not compatible with the version supported by the launcher (%2$s). You must update Geometry Dash to fix this.\nLaunch will continue, but crashes may occur!
+        The current version of KillaGDPS is not compatible with the version supported by the launcher (%2$s). You must update KillaGDPS to fix this.\nLaunch will continue, but crashes may occur!
     </string>
     <string name="launcher_unsupported_version_description">
-        The current version of Geometry Dash is not compatible with the version supported by the launcher. A launcher update is required to fix this.\nLaunch will continue, but crashes may occur!
+        The current version of KillaGDPS is not compatible with the version supported by the launcher. A launcher update is required to fix this.\nLaunch will continue, but crashes may occur!
     </string>
     <string name="launcher_update_available">A new launcher update is available!</string>
     <string name="launcher_update_dismiss">Dismiss</string>
@@ -48,9 +48,9 @@
 
     <!-- GeometryDashActivity strings -->
     <string name="load_failed_link_error">Failed to link libraries</string>
-    <string name="load_failed_link_error_description">Game libraries could not be found. This may occur if the architecture or version of the launcher and Geometry Dash do not match, or from a system bug.\nCheck application logs for more details.</string>
-    <string name="load_failed_abi_error_need_64bit_description">The architecture of the launcher and Geometry Dash do not match. Please reinstall Geometry Dash from the Play Store or use the 64-bit version of the launcher to resolve this issue.\nCheck application logs for more details.</string>
-    <string name="load_failed_abi_error_need_32bit_description">The architecture of the launcher and Geometry Dash do not match. Please reinstall Geometry Dash from the Play Store or use the 32-bit version of the launcher to resolve this issue.\nCheck application logs for more details.</string>
+    <string name="load_failed_link_error_description">Game libraries could not be found. This may occur if the architecture or version of the launcher and KillaGDPS do not match, or from a system bug.\nCheck application logs for more details.</string>
+    <string name="load_failed_abi_error_need_64bit_description">The architecture of the launcher and KillaGDPS do not match. Please reinstall KillaGDPS from the Play Store or use the 64-bit version of the launcher to resolve this issue.\nCheck application logs for more details.</string>
+    <string name="load_failed_abi_error_need_32bit_description">The architecture of the launcher and KillaGDPS do not match. Please reinstall KillaGDPS from the Play Store or use the 32-bit version of the launcher to resolve this issue.\nCheck application logs for more details.</string>
     <string name="load_failed_generic_error">Load failed</string>
     <string name="load_failed_generic_error_description">Uncaught error during game load: `%1$s`.\nCheck application logs for more details.</string>
     <string name="message_box_cancel">Cancel</string>
@@ -86,7 +86,7 @@
 
     <string name="preference_check_for_updates_button">Check for updates</string>
     <string name="preference_check_for_updates_description">Current loader version: %1$s</string>
-    <string name="preference_launcher_version">Geode Launcher v%1$s</string>
+    <string name="preference_launcher_version">KillaGDPS Launcher v%1$s. Based on Geode Launcher</string>
     <string name="preference_check_for_updates_failed">Update failed. See logs for more details.</string>
     <string name="preference_check_for_updates_none_found">No updates found.</string>
     <string name="preference_check_for_updates_success">Geode has been updated!</string>
