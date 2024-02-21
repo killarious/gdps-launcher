@@ -26,7 +26,7 @@ class ReleaseRepository(private val httpClient: OkHttpClient) {
     }
 
     suspend fun getLatestGeodeRelease(isNightly: Boolean = false): Release? {
-        val geodeBaseUrl = "$GITHUB_API_BASE/repos/killarious/gdps-launcher/releases"
+        val geodeBaseUrl = "$GITHUB_API_BASE/repos/geode-sdk/geode/releases"
         val releasePath = if (isNightly) "$geodeBaseUrl/tags/nightly"
             else "$geodeBaseUrl/latest"
 
