@@ -1,4 +1,4 @@
-package com.geode.launcher.utils
+package org.killarious.gdpslauncher.utils
 
 import android.content.Context
 import android.widget.FrameLayout

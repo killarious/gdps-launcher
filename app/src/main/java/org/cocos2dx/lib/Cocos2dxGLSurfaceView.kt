@@ -10,7 +10,7 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.inputmethod.InputMethodManager
 import com.customRobTop.BaseRobTopActivity
-import com.geode.launcher.utils.GeodeUtils
+import org.killarious.gdpslauncher.utils.GeodeUtils
 
 private const val HANDLER_OPEN_IME_KEYBOARD = 2
 private const val HANDLER_CLOSE_IME_KEYBOARD = 3
