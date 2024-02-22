@@ -16,6 +16,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.Keep
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
@@ -29,6 +30,7 @@ import java.io.File
 import java.lang.ref.WeakReference
 import kotlin.system.exitProcess
 
+@Keep
 @Suppress("unused", "KotlinJniMissingFunction")
 object GeodeUtils {
     private lateinit var activity: WeakReference<AppCompatActivity>
@@ -106,7 +108,7 @@ object GeodeUtils {
         }
 
         // only necessary on newer android versions
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.S_V2) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             internalRequestAllFilesLauncher = activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { _ ->
                 if (Environment.isExternalStorageManager()) {
                     afterRequestPermissions?.invoke()
@@ -219,7 +221,7 @@ object GeodeUtils {
     private external fun failedCallback()
 
     private fun checkForFilePermissions(onSuccess: () -> Unit, onFailure: () -> Unit) {
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.S_V2) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (Environment.isExternalStorageManager()) {
                 onSuccess()
             } else {
@@ -320,15 +322,12 @@ object GeodeUtils {
 
     @JvmStatic
     fun createFile(path: String): Boolean {
-        var uri: Uri?
-        DocumentFile.fromFile(File(path)).also {
-            uri = it.uri
-        }
+        val initialPath = File(path)
 
         return try {
             checkForFilePermissions(
                 onSuccess = {
-                    saveFileResultLauncher.launch(GeodeSaveFileActivityResult.SaveFileParams(null, uri))
+                    saveFileResultLauncher.launch(GeodeSaveFileActivityResult.SaveFileParams(null, initialPath))
                 },
                 onFailure = { failedCallback() }
             )
@@ -379,7 +378,7 @@ object GeodeUtils {
         val context = activity.get() ?: return false
 
         return when (permission) {
-            MANAGE_ALL_FILES -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S_V2) {
+            MANAGE_ALL_FILES -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 Environment.isExternalStorageManager()
             } else {
                 val permissions = listOf(
@@ -446,4 +445,30 @@ object GeodeUtils {
 
         return null
     }
+
+    interface CapabilityListener {
+        fun onCapabilityAdded(capability: String): Boolean
+    }
+
+    const val CAPABILITY_EXTENDED_INPUT = "extended_input"
+
+    private var capabilityListener: WeakReference<CapabilityListener?> = WeakReference(null)
+
+    fun setCapabilityListener(listener: CapabilityListener) {
+        capabilityListener = WeakReference(listener)
+    }
+
+    @JvmStatic
+    fun reportPlatformCapability(capability: String?): Boolean {
+        if (capability.isNullOrEmpty()) {
+            return false
+        }
+
+        return capabilityListener.get()?.onCapabilityAdded(capability) ?: false
+    }
+
+    external fun nativeKeyUp(keyCode: Int, modifiers: Int)
+    external fun nativeKeyDown(keyCode: Int, modifiers: Int, isRepeating: Boolean)
+    external fun nativeActionScroll(scrollX: Float, scrollY: Float)
+    external fun resizeSurface(width: Int, height: Int)
 }

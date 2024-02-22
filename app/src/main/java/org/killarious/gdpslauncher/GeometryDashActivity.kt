@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.util.Log
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -21,6 +22,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.customRobTop.BaseRobTopActivity
 import com.customRobTop.JniToCpp
 import org.killarious.gdpslauncher.utils.Constants
+import org.killarious.gdpslauncher.utils.ConstrainedFrameLayout
 import org.killarious.gdpslauncher.utils.DownloadUtils
 import org.killarious.gdpslauncher.utils.GeodeUtils
 import org.killarious.gdpslauncher.utils.LaunchUtils
@@ -34,14 +36,27 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 
+enum class DisplayMode {
+    DEFAULT, LIMITED, FULLSCREEN;
 
-class GeometryDashActivity : AppCompatActivity(), Cocos2dxHelper.Cocos2dxHelperListener {
+    companion object {
+        fun fromInt(i: Int) = when (i) {
+            1 -> LIMITED
+            2 -> FULLSCREEN
+            else -> DEFAULT
+        }
+    }
+}
+
+class GeometryDashActivity : AppCompatActivity(), Cocos2dxHelper.Cocos2dxHelperListener, GeodeUtils.CapabilityListener {
     private var mGLSurfaceView: Cocos2dxGLSurfaceView? = null
     private val sTag = GeometryDashActivity::class.simpleName
     private var mIsRunning = false
     private var mIsOnPause = false
     private var mHasWindowFocus = false
     private var mReceiver: BroadcastReceiver? = null
+
+    private var displayMode = DisplayMode.DEFAULT
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setupUIState()
@@ -65,36 +80,39 @@ class GeometryDashActivity : AppCompatActivity(), Cocos2dxHelper.Cocos2dxHelperL
 
             val is64bit = LaunchUtils.is64bit
             val errorMessage = when {
-                abiMismatch && is64bit -> getString(R.string.load_failed_abi_error_need_32bit_description)
-                abiMismatch -> getString(R.string.load_failed_abi_error_need_64bit_description)
-                else -> getString(R.string.load_failed_link_error_description)
+                abiMismatch && is64bit -> LaunchUtils.LauncherError.LINKER_NEEDS_32BIT
+                abiMismatch -> LaunchUtils.LauncherError.LINKER_NEEDS_64BIT
+                else -> LaunchUtils.LauncherError.LINKER_FAILED
             }
 
-            returnToMain(
-                getString(R.string.load_failed_link_error),
-                errorMessage
-            )
+            returnToMain(errorMessage, e.message, e.stackTraceToString())
 
             return
         } catch (e: Exception) {
             Log.e("GeodeLauncher", "Uncaught error during game load", e)
 
             returnToMain(
-                getString(R.string.load_failed_generic_error),
-                getString(R.string.load_failed_generic_error_description, e.message ?: "UnknownException")
+                LaunchUtils.LauncherError.GENERIC,
+                e.message ?: "Unknown Exception",
+                e.stackTraceToString()
             )
 
             return
         }
     }
 
-    private fun returnToMain(returnTitle: String? = null, returnMessage: String? = null) {
+    private fun returnToMain(
+        error: LaunchUtils.LauncherError? = null,
+        returnMessage: String? = null,
+        returnExtendedMessage: String? = null
+    ) {
         val launchIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK
 
-            if (!returnTitle.isNullOrEmpty() && !returnMessage.isNullOrEmpty()) {
-                putExtra(Constants.LAUNCHER_KEY_RETURN_TITLE, returnTitle)
-                putExtra(Constants.LAUNCHER_KEY_RETURN_MESSAGE, returnMessage)
+            if (error != null && !returnMessage.isNullOrEmpty()) {
+                putExtra(LaunchUtils.LAUNCHER_KEY_RETURN_ERROR, error)
+                putExtra(LaunchUtils.LAUNCHER_KEY_RETURN_MESSAGE, returnMessage)
+                putExtra(LaunchUtils.LAUNCHER_KEY_RETURN_EXTENDED_MESSAGE, returnExtendedMessage)
             }
         }
 
@@ -107,7 +125,9 @@ class GeometryDashActivity : AppCompatActivity(), Cocos2dxHelper.Cocos2dxHelperL
         setupRedirection(gdPackageInfo)
 
         Cocos2dxHelper.init(this, this)
+
         GeodeUtils.setContext(this)
+        GeodeUtils.setCapabilityListener(this)
 
         tryLoadLibrary(gdPackageInfo, Constants.FMOD_LIB_NAME)
         tryLoadLibrary(gdPackageInfo, Constants.COCOS_LIB_NAME)
@@ -179,9 +199,69 @@ class GeometryDashActivity : AppCompatActivity(), Cocos2dxHelper.Cocos2dxHelperL
     @SuppressLint("UnsafeDynamicallyLoadedCode")
     private fun tryLoadLibrary(packageInfo: PackageInfo, libraryName: String) {
         val nativeDir = getNativeLibraryDirectory(packageInfo.applicationInfo)
-
         val libraryPath = if (nativeDir.endsWith('/')) "${nativeDir}lib$libraryName.so" else "$nativeDir/lib$libraryName.so"
-        System.load(libraryPath)
+
+        try {
+            System.load(libraryPath)
+        } catch (ule: UnsatisfiedLinkError) {
+            // some devices (samsung a series, cough) have an overly restrictive application classloader
+            // this is a workaround for that. hopefully
+            if (ule.message?.contains("not accessible for the namespace") != true) {
+                throw ule
+            }
+
+            println("Using copy for library $libraryName")
+            loadLibraryCopy(libraryName, libraryPath)
+        }
+    }
+
+    @SuppressLint("UnsafeDynamicallyLoadedCode")
+    private fun loadLibraryCopy(libraryName: String, libraryPath: String) {
+        if (libraryPath.contains("!/")) {
+            // library in apk can't be loaded directly
+            loadLibraryFromAssetsCopy(libraryName)
+            return
+        }
+
+        val library = File(libraryPath)
+        val libraryCopy = File(cacheDir, "lib$libraryName.so")
+
+        libraryCopy.outputStream().use { libraryOutput ->
+            library.inputStream().use { inputStream ->
+                DownloadUtils.copyFile(inputStream, libraryOutput)
+            }
+        }
+
+        System.load(libraryCopy.path)
+
+        return
+    }
+
+    @SuppressLint("UnsafeDynamicallyLoadedCode")
+    private fun loadLibraryFromAssetsCopy(libraryName: String) {
+        // loads a library loaded in assets
+        // this copies the library to a non-compressed directory
+
+        val arch = LaunchUtils.applicationArchitecture
+        val libraryFd = try {
+            assets.openNonAssetFd("lib/$arch/lib$libraryName.so")
+        } catch (_: Exception) {
+            throw UnsatisfiedLinkError("Could not find library lib$libraryName.so for abi $arch")
+        }
+
+        // copy the library to a path we can access
+        // there doesn't seem to be a way to load a library from a file descriptor
+        val libraryCopy = File(cacheDir, "lib$libraryName.so")
+
+        libraryCopy.outputStream().use { libraryOutput ->
+            libraryFd.createInputStream().use { inputStream ->
+                DownloadUtils.copyFile(inputStream, libraryOutput)
+            }
+        }
+
+        System.load(libraryCopy.path)
+
+        return
     }
 
     private fun getNativeLibraryDirectory(applicationInfo: ApplicationInfo): String {
@@ -257,10 +337,22 @@ class GeometryDashActivity : AppCompatActivity(), Cocos2dxHelper.Cocos2dxHelperL
     }
 
     private fun createView(): FrameLayout {
-        val frameLayoutParams = ViewGroup.LayoutParams(-1, -1)
-        val frameLayout = FrameLayout(this)
+        val frameLayoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        val frameLayout = ConstrainedFrameLayout(this)
         frameLayout.layoutParams = frameLayoutParams
-        val editTextLayoutParams = ViewGroup.LayoutParams(-1, -2)
+
+        if (displayMode == DisplayMode.LIMITED) {
+            // despite not being perfectly 16:9, this is what Android calls "16:9"
+            frameLayout.aspectRatio = 1.86f
+        }
+
+        val editTextLayoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
         val editText = Cocos2dxEditText(this)
         editText.layoutParams = editTextLayoutParams
         frameLayout.addView(editText)
@@ -287,6 +379,14 @@ class GeometryDashActivity : AppCompatActivity(), Cocos2dxHelper.Cocos2dxHelperL
 
     private fun setupUIState() {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
+
+        displayMode = DisplayMode.fromInt(
+            PreferenceUtils.get(this).getInt(PreferenceUtils.Key.DISPLAY_MODE)
+        )
+
+        if (displayMode == DisplayMode.FULLSCREEN && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
 
         hideSystemUi()
     }
@@ -447,5 +547,14 @@ class GeometryDashActivity : AppCompatActivity(), Cocos2dxHelper.Cocos2dxHelperL
                 }
             }
         }
+    }
+
+    override fun onCapabilityAdded(capability: String): Boolean {
+        if (capability == GeodeUtils.CAPABILITY_EXTENDED_INPUT) {
+            mGLSurfaceView?.useKeyboardEvents = true
+            return true
+        }
+
+        return false
     }
 }

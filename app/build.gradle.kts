@@ -14,8 +14,8 @@ android {
         applicationId = "org.killarious.gdpslauncher"
         minSdk = 23
         targetSdk = 34
-        versionCode = 11
-        versionName = "1.2.1"
+        versionCode = 14
+        versionName = "1.3.2"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -46,8 +46,13 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            isMinifyEnabled = true
+            isShrinkResources = true
+
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
     compileOptions {
@@ -93,10 +98,10 @@ dependencies {
     implementation ("androidx.activity:activity-ktx:1.8.2")
     implementation ("androidx.appcompat:appcompat:1.6.1")
     implementation ("androidx.documentfile:documentfile:1.0.1")
-    implementation ("com.squareup.okio:okio:3.7.0")
+    implementation ("com.squareup.okio:okio:3.8.0")
     implementation ("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation ("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
-    implementation ("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.6.2")
+    implementation ("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    implementation ("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.6.3")
     implementation ("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
     debugImplementation ("androidx.compose.ui:ui-tooling")
     coreLibraryDesugaring ("com.android.tools:desugar_jdk_libs:2.0.4")
